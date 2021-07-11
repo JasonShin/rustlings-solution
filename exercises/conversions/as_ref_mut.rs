@@ -1,25 +1,52 @@
-// AsRef and AsMut allow for cheap reference-to-reference conversions.
-// Read more about them at https://doc.rust-lang.org/std/convert/trait.AsRef.html
-// and https://doc.rust-lang.org/std/convert/trait.AsMut.html, respectively.
+// This does practically the same thing that TryFrom<&str> does.
+// Additionally, upon implementing FromStr, you can use the `parse` method
+// on strings to generate an object of the implementor type.
+// You can read more about it at https://doc.rust-lang.org/std/str/trait.FromStr.html
+use std::error;
+use std::str::FromStr;
+use std::fmt;
 
-// I AM NOT DONE
-
-// Obtain the number of bytes (not characters) in the given argument
-// Add the AsRef trait appropriately as a trait bound
-fn byte_counter<T>(arg: T) -> usize {
-    arg.as_ref().as_bytes().len()
+#[derive(Debug)]
+struct Person {
+    name: String,
+    age: usize,
 }
 
-// Obtain the number of characters (not bytes) in the given argument
-// Add the AsRef trait appropriately as a trait bound
-fn char_counter<T>(arg: T) -> usize {
-    arg.as_ref().chars().count()
+// Steps:
+// 1. If the length of the provided string is 0, an error should be returned
+// 2. Split the given string on the commas present in it
+// 3. Only 2 elements should be returned from the split, otherwise return an error
+// 4. Extract the first element from the split operation and use it as the name
+// 5. Extract the other element from the split operation and parse it into a `usize` as the age
+//    with something like `"4".parse::<usize>()`
+// 5. If while extracting the name and the age something goes wrong, an error should be returned
+// If everything goes well, then return a Result of a Person object
+
+impl FromStr for Person {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Person, Self::Err> {
+        let tokens: Vec<&str> = s.split(",").collect();
+        let name = tokens.get(0);
+        let age = tokens.get(1);
+
+        if tokens.len() != 2 {
+            return Err("tokens must be size of 2".to_string());
+        }
+
+        if name == Some(&"") || age == Some(&"") {
+            return Err("name and age cannot be empty".to_string())
+        }
+
+        let name = name.unwrap().to_string();
+        let age = age.unwrap().parse::<usize>().map_err(|err| err.to_string())?;
+
+        Ok(Person { name, age })
+    }
 }
 
 fn main() {
-    let s = "Café au lait";
-    println!("{}", char_counter(s));
-    println!("{}", byte_counter(s));
+    let p = "Mark,20".parse::<Person>().unwrap();
+    println!("{:?}", p);
 }
 
 #[cfg(test)]
@@ -27,26 +54,55 @@ mod tests {
     use super::*;
 
     #[test]
-    fn different_counts() {
-        let s = "Café au lait";
-        assert_ne!(char_counter(s), byte_counter(s));
+    fn empty_input() {
+        assert!("".parse::<Person>().is_err());
+    }
+    #[test]
+    fn good_input() {
+        let p = "John,32".parse::<Person>();
+        println!("checking {:?}", p);
+        assert!(p.is_ok());
+        let p = p.unwrap();
+        assert_eq!(p.name, "John");
+        assert_eq!(p.age, 32);
+    }
+    #[test]
+    fn missing_age() {
+        assert!("John,".parse::<Person>().is_err());
     }
 
     #[test]
-    fn same_counts() {
-        let s = "Cafe au lait";
-        assert_eq!(char_counter(s), byte_counter(s));
+    fn invalid_age() {
+        assert!("John,twenty".parse::<Person>().is_err());
     }
 
     #[test]
-    fn different_counts_using_string() {
-        let s = String::from("Café au lait");
-        assert_ne!(char_counter(s.clone()), byte_counter(s));
+    fn missing_comma_and_age() {
+        assert!("John".parse::<Person>().is_err());
     }
 
     #[test]
-    fn same_counts_using_string() {
-        let s = String::from("Cafe au lait");
-        assert_eq!(char_counter(s.clone()), byte_counter(s));
+    fn missing_name() {
+        assert!(",1".parse::<Person>().is_err());
+    }
+
+    #[test]
+    fn missing_name_and_age() {
+        assert!(",".parse::<Person>().is_err());
+    }
+
+    #[test]
+    fn missing_name_and_invalid_age() {
+        assert!(",one".parse::<Person>().is_err());
+    }
+
+    #[test]
+    fn trailing_comma() {
+        assert!("John,32,".parse::<Person>().is_err());
+    }
+
+    #[test]
+    fn trailing_comma_and_some_string() {
+        assert!("John,32,man".parse::<Person>().is_err());
     }
 }

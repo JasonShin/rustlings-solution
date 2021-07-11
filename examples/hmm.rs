@@ -4,12 +4,15 @@
 // You can read more about it at https://doc.rust-lang.org/std/str/trait.FromStr.html
 use std::error;
 use std::str::FromStr;
+use std::fmt;
 
 #[derive(Debug)]
 struct Person {
     name: String,
     age: usize,
 }
+
+// I AM NOT DONE
 
 // Steps:
 // 1. If the length of the provided string is 0, an error should be returned
@@ -59,6 +62,7 @@ mod tests {
     #[test]
     fn good_input() {
         let p = "John,32".parse::<Person>();
+        println!("checking {:?}", p);
         assert!(p.is_ok());
         let p = p.unwrap();
         assert_eq!(p.name, "John");
